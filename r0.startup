@@ -1,0 +1,26 @@
+# =========================
+# CONFIGURACAO DO ROTEADOR DE BORDA
+# =========================
+
+# Interface WAN conectada ao firewall
+ifconfig eth0 198.51.100.2/30 up
+
+# Rotas para as redes internas atraves do firewall
+ip route add 10.0.1.0/24 via 198.51.100.1
+ip route add 10.0.2.0/24 via 198.51.100.1
+
+# Habilita encaminhamento IPv4
+sysctl -w net.ipv4.ip_forward=1
+
+
+# =========================
+# NAT
+# =========================
+
+# Permite que LAN/DMZ saiam para a Internet usando o IP externo do r0
+iptables -t nat -A POSTROUTING -o eth1 -j MASQUERADE
+
+# Publica o servidor Web da DMZ na porta HTTP/80.
+# Trafego que chega pela interface externa na porta 80
+# tem seu destino traduzido para o servidor Web da DMZ.
+iptables -t nat -A PREROUTING -i eth1 -p tcp --dport 80 -j DNAT --to-destination 10.0.2.10:80

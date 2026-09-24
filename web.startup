@@ -1,0 +1,4 @@
+ifconfig eth0 10.0.2.10/24 up
+ip route add default via 10.0.2.1
+
+service apache2 start

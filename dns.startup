@@ -1,0 +1,7 @@
+ifconfig eth0 10.0.2.11/24 up
+ip route add default via 10.0.2.1
+
+sed -i '/dnssec-validation auto;/i\        forwarders { 8.8.8.8; };' /etc/bind/named.conf.options
+sed -i '/dnssec-validation auto;/i\        allow-recursion { 10.0.1.0/24; 10.0.2.0/24; localhost; };' /etc/bind/named.conf.options
+
+named

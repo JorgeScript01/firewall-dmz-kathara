@@ -1,0 +1,59 @@
+# =========================
+# CONFIGURACAO DE REDE
+# =========================
+
+# WAN
+ifconfig eth0 198.51.100.1/30 up
+
+# LAN
+ifconfig eth1 10.0.1.1/24 up
+
+# DMZ
+ifconfig eth2 10.0.2.1/24 up
+
+# Rota padrao para o roteador de borda
+ip route add default via 198.51.100.2
+
+# Habilita o encaminhamento IPv4
+sysctl -w net.ipv4.ip_forward=1
+
+
+# =========================
+# FIREWALL - DEFAULT DENY
+# =========================
+
+# Limpa regras anteriores da chain FORWARD
+iptables -F FORWARD
+
+
+# 1. Permite respostas de conexoes ja autorizadas
+iptables -A FORWARD -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+
+
+# 2. LAN -> Internet
+iptables -A FORWARD -i eth1 -o eth0 -s 10.0.1.0/24 -m conntrack --ctstate NEW -j ACCEPT
+
+
+# 3. LAN -> Web da DMZ (HTTP)
+iptables -A FORWARD -i eth1 -o eth2 -s 10.0.1.0/24 -d 10.0.2.10 -p tcp --dport 80 -m conntrack --ctstate NEW -j ACCEPT
+
+
+# 4. LAN -> DNS da DMZ (UDP e TCP)
+iptables -A FORWARD -i eth1 -o eth2 -s 10.0.1.0/24 -d 10.0.2.11 -p udp --dport 53 -m conntrack --ctstate NEW -j ACCEPT
+
+iptables -A FORWARD -i eth1 -o eth2 -s 10.0.1.0/24 -d 10.0.2.11 -p tcp --dport 53 -m conntrack --ctstate NEW -j ACCEPT
+
+
+# 5. DNS da DMZ -> servidor DNS externo
+iptables -A FORWARD -i eth2 -o eth0 -s 10.0.2.11 -p udp --dport 53 -m conntrack --ctstate NEW -j ACCEPT
+
+iptables -A FORWARD -i eth2 -o eth0 -s 10.0.2.11 -p tcp --dport 53 -m conntrack --ctstate NEW -j ACCEPT
+
+
+# 6. Internet/WAN -> Web da DMZ (HTTP)
+iptables -A FORWARD -i eth0 -o eth2 -d 10.0.2.10 -p tcp --dport 80 -m conntrack --ctstate NEW -j ACCEPT
+
+
+# 7. DEFAULT DENY
+# Tudo que nao foi explicitamente permitido acima sera bloqueado.
+iptables -P FORWARD DROP
